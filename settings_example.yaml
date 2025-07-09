@@ -1,0 +1,2 @@
+# the path of where you're targetting the media server
+media_path: "."
