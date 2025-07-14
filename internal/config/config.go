@@ -1,14 +1,14 @@
-package main
+package config
 
 import "github.com/spf13/viper"
 
-type config struct {
-	Port      int    `mapstructure:"port"`
-	MediaPath string `mapstructure:"media_path"`
+type Config struct {
+	Port   int      `mapstructure:"port"`
+	Target []string `mapstructure:"target"`
 }
 
-func loadConfig() (*config, error) {
-	var cfg config
+func LoadConfig() (*Config, error) {
+	var cfg Config
 
 	// setup configuration settings
 	viper.SetConfigType("yaml")

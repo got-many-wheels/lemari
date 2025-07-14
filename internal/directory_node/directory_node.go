@@ -2,14 +2,36 @@ package directorynode
 
 import (
 	"io/fs"
-	"os"
 	"path/filepath"
-	"strings"
+	"regexp"
+	"slices"
 )
 
 type DirectoryNode struct {
 	Files       []string
 	SubDirNodes map[string]*DirectoryNode
+}
+
+// TODO: idk if all theese extensions is gonna work with what am going to be working next
+var extensions = []string{
+	// Unknown
+	".webm",
+
+	// SDTV
+	".m4v", ".3gp", ".nsv", ".ty", ".strm", ".rm", ".rmvb", ".m3u", ".ifo",
+	".mov", ".qt", ".divx", ".xvid", ".bivx", ".nrg", ".pva", ".wmv", ".asf",
+	".asx", ".ogm", ".ogv", ".m2v", ".avi", ".bin", ".dat", ".dvr-ms", ".mpg",
+	".mpeg", ".mp4", ".avc", ".vp3", ".svq3", ".nuv", ".viv", ".dv", ".fli",
+	".flv", ".wpl",
+
+	// DVD
+	".img", ".iso", ".vob",
+
+	// HD
+	".mkv", ".mk3d", ".ts", ".wtv",
+
+	// Bluray
+	".m2ts",
 }
 
 func New() *DirectoryNode {
@@ -33,29 +55,54 @@ func (dn *DirectoryNode) Scan(start string) (*DirectoryNode, error) {
 			return nil
 		}
 
-		// split the current file name into parts, so it's easier to get the directory name
 		parent := root
-		parts := strings.Split(rel, string(os.PathSeparator))
 
-		for i := 0; i < len(parts)-1; i++ {
-			dir := parts[i]
-			if _, exists := parent.SubDirNodes[dir]; !exists {
-				parent.SubDirNodes[dir] = New()
-			}
-			// update the parent pointer to the current directory
-			parent = parent.SubDirNodes[dir]
+		if parent.SubDirNodes == nil {
+			parent.SubDirNodes = make(map[string]*DirectoryNode)
 		}
 
 		if info.IsDir() {
-			// initialize dir node if scanned file is a directory
+			if _, exists := parent.SubDirNodes[info.Name()]; !exists {
+				parent.SubDirNodes[info.Name()] = New()
+			}
 			parent.SubDirNodes[info.Name()] = New()
 		} else {
 			// append current file relative path to files array
-			parent.Files = append(parent.Files, rel)
+			parent.Files = append(parent.Files, filepath.Join(start, rel))
 		}
 
 		return nil
 	})
 
 	return root, err
+}
+
+// get all files on every directory level
+func (dn *DirectoryNode) DirFiles() []string {
+	res := []string{}
+	stack := []*DirectoryNode{dn}
+	for len(stack) > 0 {
+		current := stack[0]
+		stack = stack[1:]
+		if len(current.Files) > 0 {
+			for _, file := range current.Files {
+				if dn.isMedia(file) {
+					res = append(res, file)
+				}
+			}
+		}
+		for _, node := range current.SubDirNodes {
+			stack = append(stack, node)
+		}
+	}
+	return res
+}
+
+func (dn *DirectoryNode) isMedia(filename string) bool {
+	pattern := regexp.MustCompile(`\.[0-9a-zA-Z]+$`)
+	match := pattern.FindString(filename)
+	if slices.Contains(extensions, match) {
+		return true
+	}
+	return false
 }
