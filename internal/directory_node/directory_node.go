@@ -14,6 +14,7 @@ type DirectoryNode struct {
 
 // TODO: idk if all theese extensions is gonna work with what am going to be working next
 var extensions = []string{
+	".mpd",
 	// Unknown
 	".webm",
 

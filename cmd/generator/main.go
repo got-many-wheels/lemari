@@ -27,6 +27,7 @@ func main() {
 		panic(err)
 	}
 	files := []string{}
+
 	for _, target := range cfg.Target {
 		dn := directorynode.New()
 		_, err := dn.Scan(target)
@@ -59,6 +60,7 @@ func creatempd(opt mpdOpts) error {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
+	// TODO: add flag to transcode lower resolutions also (god i wish have a bulky pc for this)
 	cmd := exec.Command(
 		"ffmpeg", "-i", opt.input,
 		"-map", "0:v:0",
@@ -76,7 +78,6 @@ func creatempd(opt mpdOpts) error {
 		"-ar", opt.audioRate,
 		"-use_timeline", "1",
 		"-use_template", "1",
-		"-window_size", "5",
 		"-adaptation_sets", "id=0,streams=v id=1,streams=a",
 		"-f", "dash", opt.output,
 	)

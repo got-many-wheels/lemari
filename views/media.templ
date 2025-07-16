@@ -1,0 +1,17 @@
+package views
+
+templ Media(media string) {
+	@Layout() {
+		<div>
+			<video id="videoPlayer" controls></video>
+		</div>
+		<script src="/public/js/dash.all.min.js"></script>
+		<script>
+	(function () {
+		var url = "./manifest/{{ media }}/output.mpd"
+		var player = dashjs.MediaPlayer().create()
+		player.initialize(document.querySelector("#videoPlayer"), url, true)
+	})()
+</script>
+	}
+}

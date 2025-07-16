@@ -1,9 +1,16 @@
 package views
 
-templ Index() {
+templ Index(dirs []string) {
 	@Layout() {
 		<div>
-			<h1>Hello world</h1>
+			<h2>Media Directories:</h2>
+			<ul>
+				for _, d := range dirs {
+					<li>
+						<a href={ "./" + d }>{ d }</a>
+					</li>
+				}
+			</ul>
 		</div>
 	}
 }

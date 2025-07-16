@@ -1,8 +1,14 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
+	"os"
+	"path"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/got-many-wheels/lemari/internal/config"
@@ -29,7 +35,8 @@ func newApp() (*app, error) {
 	a.Config = *cfg
 
 	// TODO: scan the transcoded media instead
-	dirs, err := a.DirectoryNode.Scan(a.Config.Target[0])
+	pwd, _ := os.Getwd()
+	dirs, err := a.DirectoryNode.Scan(path.Join(pwd, "output"))
 	if err != nil {
 		return nil, err
 	}
@@ -42,6 +49,8 @@ func newApp() (*app, error) {
 	ginHtmlRenderer := a.Engine.HTMLRender
 	a.Engine.HTMLRender = &renderer.HTMLTemplRenderer{FallbackHtmlRenderer: ginHtmlRenderer}
 
+	a.Engine.Static("public", path.Join(pwd, "public"))
+
 	a.setupRoutes()
 
 	return a, nil
@@ -49,7 +58,51 @@ func newApp() (*app, error) {
 
 func (a *app) setupRoutes() {
 	a.Engine.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "", views.Index())
+		dirs := a.DirectoryNode.DirFiles()
+		pwd, _ := os.Getwd()
+		// use lexically relative path equivalent to pwd/output to keep it clean
+		for i := range dirs {
+			rel, _ := filepath.Rel(path.Join(pwd, "output"), dirs[i])
+			parts := strings.Split(rel, string(os.PathSeparator))
+			dirs[i] = parts[0] // get the video title instead
+		}
+		c.HTML(http.StatusOK, "", views.Index(dirs))
+	})
+
+	a.Engine.GET("/:media", func(c *gin.Context) {
+		media := c.Param("media")
+		pwd, _ := os.Getwd()
+		_, err := os.Stat(path.Join(pwd, "output", media))
+		if err != nil {
+			if errors.Is(os.ErrNotExist, err) {
+				c.JSON(http.StatusNotFound, gin.H{
+					"error": "Media not found",
+				})
+				return
+			}
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Something went wrong",
+			})
+			fmt.Println(err)
+			return
+		}
+		c.HTML(http.StatusOK, "", views.Media(media))
+	})
+
+	a.Engine.GET("/manifest/:media/:manifest", func(c *gin.Context) {
+		media := c.Param("media")
+		manifest := c.Param("manifest")
+		pwd, _ := os.Getwd()
+		manifestPath := path.Join(pwd, "output", media, manifest)
+		fmanifest, err := os.Open(manifestPath)
+		if err != nil {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "Manifest not found",
+			})
+			return
+		}
+		defer fmanifest.Close()
+		c.File(manifestPath)
 	})
 }
 
